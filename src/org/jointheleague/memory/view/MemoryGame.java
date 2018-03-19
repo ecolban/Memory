@@ -15,7 +15,7 @@ public class MemoryGame extends JPanel implements Runnable, Observer {
      * Constants
      */
     private static final int NUM_ROWS = 4;
-    private static final int NUM_COLUMNS = 4;
+    private static final int NUM_COLUMNS = 6;
     private static final int NUM_CARDS = NUM_ROWS * NUM_COLUMNS;
 
     private final GameController controller;
@@ -69,19 +69,22 @@ public class MemoryGame extends JPanel implements Runnable, Observer {
     @Override
     public void update(Observable o, Object arg) {
         if (o != model) return;
-        if (model.isNewGame()) {
-            Card[] cards = model.getCards();
-            for (int i = 0; i < cards.length; i++) {
-                buttons[i].setCard(cards[i]);
+        SwingUtilities.invokeLater(() ->
+        {
+            if (model.isNewGame()) {
+                Card[] cards = model.getCards();
+                for (int i = 0; i < cards.length; i++) {
+                    buttons[i].setCard(cards[i]);
+                }
+            } else {
+                boolean[] faceUp = model.getFaceUp();
+                for (int i = 0; i < faceUp.length; i++) {
+                    buttons[i].setFaceUp(faceUp[i]);
+                }
             }
-        } else {
-            boolean[] faceUp = model.getFaceUp();
-            for (int i = 0; i < faceUp.length; i++) {
-                buttons[i].setFaceUp(faceUp[i]);
+            if (model.isGameOver()) {
+                controller.onGameOver(playAnotherGame());
             }
-        }
-        if (model.isGameOver()) {
-            controller.onGameOver(playAnotherGame());
-        }
+        });
     }
 }

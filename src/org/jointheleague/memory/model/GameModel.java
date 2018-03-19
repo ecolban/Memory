@@ -3,10 +3,13 @@ package org.jointheleague.memory.model;
 import org.jointheleague.cards.Card;
 import org.jointheleague.cards.Deck;
 
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
 import java.util.Observable;
 import java.util.Random;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 
 public class GameModel extends Observable {
@@ -19,13 +22,13 @@ public class GameModel extends Observable {
     private int selection1;
     private int selection2;
     private int matched = 0;
-    private Timer autoFlipTimer = new Timer(1000, e -> closeUnmatched());
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private ScheduledFuture<?> futureCloseCards;
 
     public GameModel(int numCards) {
         this.numCards = numCards;
         cards = selectCards(numCards);
         faceUp = new boolean[numCards];
-        autoFlipTimer.setRepeats(false);
     }
 
     private interface State {
@@ -67,7 +70,7 @@ public class GameModel extends Observable {
                     matched += 2;
                 } else {
                     currentState = twoCardsUnmatched;
-                    autoFlipTimer.start();
+                    futureCloseCards = scheduler.schedule(GameModel.this::closeUnmatched, 1, TimeUnit.SECONDS);
                 }
                 setChanged();
                 notifyObservers();
@@ -84,7 +87,7 @@ public class GameModel extends Observable {
 
         @Override
         public void select(int i) {
-            if (autoFlipTimer.isRunning()) autoFlipTimer.stop();
+            futureCloseCards.cancel(false);
             faceUp[selection1] = false;
             faceUp[selection2] = false;
             if (!faceUp[i]) {
