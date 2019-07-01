@@ -57,12 +57,12 @@ class TestGameModel {
     @Throws(InterruptedException::class)
     fun testSelectFirst() {
         sut = GameModel(4)
+        sut.playGame()
         // sut should notify the observer immediately, i.e. within max 100 ms
         val latch = CountDownLatch(1)
-        val observer = Observer { _, _ ->
+        sut.addObserver { _, _ ->
             latch.countDown()
         }
-        sut.addObserver(observer)
         sut.select(0)
         assertTrue(latch.await(100, TimeUnit.MILLISECONDS))
         assertArrayEquals(booleanArrayOf(true, false, false, false), sut.faceUp)
@@ -73,6 +73,7 @@ class TestGameModel {
     fun testSelectTwoNonMatching() {
         val numCards = 4
         sut = GameModel(numCards)
+        sut.playGame()
         val cards = sut.cards
         val firstSelection = Random().nextInt(numCards)
         val card0 = cards[firstSelection]
@@ -85,24 +86,32 @@ class TestGameModel {
             cards[i] != card0
         }
         sut.select(firstSelection)
+        val latch1 = CountDownLatch(1)
+        sut.addObserver { _, _ ->
+            latch1.countDown()
+        }
         sut.select(nonMatchingSelection)
         // Verify that even if two cards do not match they are face up ...
+        assertTrue(latch1.await(100, TimeUnit.MILLISECONDS))
         assertTrue(sut.faceUp[firstSelection])
         assertTrue(sut.faceUp[nonMatchingSelection])
+        val latch2 = CountDownLatch(1)
+        sut.addObserver { _, _ ->
+            latch2.countDown()
+        }
         sut.select(matchingSelection)
         // ..., but as soon as a third card is selected, the two non-matching cards are face down.
+        assertTrue(latch2.await(100, TimeUnit.MILLISECONDS))
         assertFalse(sut.faceUp[firstSelection])
         assertFalse(sut.faceUp[nonMatchingSelection])
         assertTrue(sut.faceUp[matchingSelection])
         // Verify that within 2 seconds max two non-matching cards are face down.
-        sut.select(nonMatchingSelection)
-        assertTrue(sut.faceUp[nonMatchingSelection])
-        val latch = CountDownLatch(1)
-        val observer = Observer { _, _ ->
-            if (!sut.faceUp[matchingSelection]) latch.countDown()
+        val latch3 = CountDownLatch(2)
+        sut.addObserver { _, _ ->
+            latch3.countDown()
         }
-        sut.addObserver(observer)
-        assertTrue(latch.await(2, TimeUnit.SECONDS))
+        sut.select(nonMatchingSelection)
+        assertTrue(latch3.await(2, TimeUnit.SECONDS))
         assertFalse(sut.faceUp[matchingSelection])
         assertFalse(sut.faceUp[nonMatchingSelection])
     }
@@ -112,6 +121,7 @@ class TestGameModel {
     fun testSelectTwoMatching() {
         val numCards = 4
         sut = GameModel(numCards)
+        sut.playGame()
         val cards = sut.cards
         val firstSelection = Random().nextInt(numCards)
         val card0 = cards[firstSelection]
@@ -131,6 +141,7 @@ class TestGameModel {
         assertTrue(sut.faceUp[matchingSelection])
         // Verify that two matching cards remain face up after a third card is selected
         sut.select(nonMatchingSelection)
+        Thread.sleep(100)
         assertTrue(sut.faceUp[firstSelection])
         assertTrue(sut.faceUp[matchingSelection])
         assertTrue(sut.faceUp[nonMatchingSelection])

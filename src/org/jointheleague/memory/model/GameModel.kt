@@ -5,7 +5,8 @@ import org.jointheleague.cards.Card
 import org.jointheleague.cards.Deck
 import java.awt.Color
 import java.util.*
-import javax.swing.SwingUtilities
+import java.util.concurrent.BlockingQueue
+import java.util.concurrent.SynchronousQueue
 
 
 class GameModel(private val numCards: Int) : Observable() {
@@ -14,103 +15,77 @@ class GameModel(private val numCards: Int) : Observable() {
     var isNewGame: Boolean = false
         private set
     val faceUp: BooleanArray = BooleanArray(numCards)
-    private var selection1: Int = 0
-    private var selection2: Int = 0
     private var matched = 0
-    private var closeUnmatchedCardsJob: Job? = null
-
-    private interface State {
-        fun select(i: Int)
-        fun closeUnmatchedCards()
-    }
-
-    private val zeroCardsUnmatched: State = object : State {
-
-        override fun select(i: Int) {
-            if (!faceUp[i]) {
-                selection1 = i
-                faceUp[i] = true
-                currentState = oneCardUnmatched
-                isNewGame = false
-                setChanged()
-                notifyObservers()
-            }
-        }
-
-        override fun closeUnmatchedCards() {
-        }
-    }
-
-    private val oneCardUnmatched: State = object : State {
-
-        override fun select(i: Int) {
-            if (!faceUp[i]) {
-                selection2 = i
-                faceUp[i] = true
-                if (cards[selection1] == cards[i]) {
-                    currentState = zeroCardsUnmatched
-                    matched += 2
-                } else {
-                    currentState = twoCardsUnmatched
-                    this@GameModel.closeUnmatchedCardsJob = GlobalScope.launch {
-                        delay(1000)
-                        SwingUtilities.invokeLater { this@GameModel.closeUnmatchedCards() }
-                    }
-                }
-                setChanged()
-                notifyObservers(gameOver)
-            }
-        }
-
-        override fun closeUnmatchedCards() {
-        }
-    }
-
-    private val twoCardsUnmatched = object : State {
-
-        override fun select(i: Int) {
-            this@GameModel.closeUnmatchedCardsJob?.cancel()
-            faceUp[selection1] = false
-            faceUp[selection2] = false
-            if (!faceUp[i]) {
-                selection1 = i
-                faceUp[i] = true
-                currentState = oneCardUnmatched
-            } else {
-                currentState = zeroCardsUnmatched
-            }
-            setChanged()
-            notifyObservers()
-        }
-
-        override fun closeUnmatchedCards() {
-            faceUp[selection1] = false
-            faceUp[selection2] = false
-            currentState = zeroCardsUnmatched
-            setChanged()
-            notifyObservers()
-        }
-    }
-
-    private var currentState: State = zeroCardsUnmatched
+    private val eventQueue: BlockingQueue<Int> = SynchronousQueue<Int>()
 
     val gameOver: Boolean
         get() = matched == numCards
 
-
-    fun select(i: Int) {
-        currentState.select(i)
+    fun playGame() {
+        GlobalScope.launch(Dispatchers.IO) {
+            isNewGame = false
+            var closeUnmatchedCardsJob: Job? = null
+            var first = 0
+            var second = 0
+            while (!gameOver) {
+                val tmp = nextSelected()
+                if (closeUnmatchedCardsJob?.isActive == true) {
+                    closeUnmatchedCardsJob.cancel()
+                    closeUnmatchedCards(first, second)
+                }
+                first = if (!faceUp[tmp]) tmp else nextFaceDownSelected()
+                openCard(first)
+                second = nextFaceDownSelected()
+                if (cards[first] == cards[second]) {
+                    matched += 2
+                } else {
+                    closeUnmatchedCardsJob = launchCloseUnmatchedCards(first, second)
+                }
+                openCard(second)
+            }
+        }
     }
 
-    private fun closeUnmatchedCards() {
-        currentState.closeUnmatchedCards()
+    private fun CoroutineScope.launchCloseUnmatchedCards(first: Int, second: Int): Job {
+        return launch {
+            delay(1000)
+            closeUnmatchedCards(first, second)
+        }
+    }
+
+    private suspend fun nextSelected(): Int = withContext(Dispatchers.IO) { eventQueue.take() }
+
+    private suspend fun nextFaceDownSelected(): Int {
+        var selection = nextSelected()
+        while (faceUp[selection]) {
+            selection = nextSelected()
+        }
+        return selection
+    }
+
+
+    fun select(i: Int) = eventQueue.put(i)
+
+    private fun openCard(i: Int) {
+        faceUp[i] = true
+        setChanged()
+        notifyObservers()
+    }
+
+    private fun closeUnmatchedCards(selection1: Int, selection2: Int) {
+        if (cards[selection1] != cards[selection2]) {
+            faceUp[selection1] = false
+            faceUp[selection2] = false
+            setChanged()
+            notifyObservers()
+        }
     }
 
     /**
      * Produces an array containing a random selection of cards where each card
      * occurs exactly two times in the array. Cards occur in random order.
      *
-     * @param numCards the number of cards to select (number of pairs = numCards / 2). Must be even.
+     * @param numCards an even number of cards to select (number of pairs = numCards / 2).
      * @return the Card array
      */
     private fun selectCards(numCards: Int): Array<Card> {
@@ -128,17 +103,16 @@ class GameModel(private val numCards: Int) : Observable() {
             result[i] = result[j]
             result[j] = card
         }
-        isNewGame = true
         return result
     }
 
     fun reset() {
-        currentState = zeroCardsUnmatched
         cards = selectCards(numCards)
         for (i in faceUp.indices) {
             faceUp[i] = false
         }
         matched = 0
+        isNewGame = true
         setChanged()
         notifyObservers()
     }

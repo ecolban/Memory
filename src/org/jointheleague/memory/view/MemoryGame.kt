@@ -40,6 +40,7 @@ class MemoryGame : JPanel(), Runnable, Observer {
         frame.addWindowListener(controller)
         frame.isVisible = true
         model.addObserver(this)
+        model.playGame()
     }
 
 
@@ -51,18 +52,20 @@ class MemoryGame : JPanel(), Runnable, Observer {
 
     override fun update(observable: Observable, arg: Any?) {
         if (observable !== model) return
-        if (model.isNewGame) {
-            val cards = model.cards
-            for ((i, c) in cards.withIndex()) {
-                buttons[i].card = c
+        SwingUtilities.invokeLater {
+            if (model.isNewGame) {
+                for ((i, c) in model.cards.withIndex()) {
+                    buttons[i].card = c
+                }
+                model.playGame()
+            } else {
+                for ((i, v) in model.faceUp.withIndex()) {
+                    buttons[i].faceUp = v
+                }
             }
-        } else {
-            for ((i, v) in model.faceUp.withIndex()) {
-                buttons[i].faceUp = v
+            if (model.gameOver) {
+                controller.onGameOver(playAnotherGame())
             }
-        }
-        if (model.gameOver) {
-            controller.onGameOver(playAnotherGame())
         }
     }
 }
