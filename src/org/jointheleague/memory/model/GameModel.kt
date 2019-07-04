@@ -1,12 +1,11 @@
 package org.jointheleague.memory.model
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.Channel
 import org.jointheleague.cards.Card
 import org.jointheleague.cards.Deck
 import java.awt.Color
 import java.util.*
-import java.util.concurrent.BlockingQueue
-import java.util.concurrent.SynchronousQueue
 
 
 class GameModel(private val numCards: Int) : Observable() {
@@ -16,13 +15,20 @@ class GameModel(private val numCards: Int) : Observable() {
         private set
     val faceUp: BooleanArray = BooleanArray(numCards)
     private var matched = 0
-    private val eventQueue: BlockingQueue<Int> = SynchronousQueue<Int>()
+    private val eventQueue = Channel<Int>()
 
     val gameOver: Boolean
         get() = matched == numCards
 
+    /**
+     * Logs a message with thread and coroutine info.
+     * Run with VM option -Dkotlinx.coroutines.debug
+     */
+    private fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
+
     fun playGame() {
-        GlobalScope.launch(Dispatchers.IO) {
+        GlobalScope.launch {
+            log("playGame launched.")
             isNewGame = false
             var closeUnmatchedCardsJob: Job? = null
             var first = 0
@@ -53,9 +59,13 @@ class GameModel(private val numCards: Int) : Observable() {
         }
     }
 
-    private suspend fun nextSelected(): Int = withContext(Dispatchers.IO) { eventQueue.take() }
+    private suspend fun nextSelected(): Int {
+        log("nextSelected")
+        return eventQueue.receive()
+    }
 
     private suspend fun nextFaceDownSelected(): Int {
+        log("nextFaceDownSelected")
         var selection = nextSelected()
         while (faceUp[selection]) {
             selection = nextSelected()
@@ -64,7 +74,10 @@ class GameModel(private val numCards: Int) : Observable() {
     }
 
 
-    fun select(i: Int) = eventQueue.put(i)
+    fun select(i: Int) = runBlocking {
+        log("select($i)")
+        eventQueue.send(i)
+    }
 
     private fun openCard(i: Int) {
         faceUp[i] = true
