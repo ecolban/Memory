@@ -54,6 +54,7 @@ class GameModel(private val numCards: Int) : Observable() {
 
     private fun CoroutineScope.launchCloseUnmatchedCards(first: Int, second: Int): Job {
         return launch {
+            log("Launching launchCloseUnmatchedCards...")
             delay(1000)
             closeUnmatchedCards(first, second)
         }
@@ -66,9 +67,9 @@ class GameModel(private val numCards: Int) : Observable() {
 
     private suspend fun nextFaceDownSelected(): Int {
         log("nextFaceDownSelected")
-        var selection = nextSelected()
+        var selection = eventQueue.receive()
         while (faceUp[selection]) {
-            selection = nextSelected()
+            selection = eventQueue.receive()
         }
         return selection
     }
