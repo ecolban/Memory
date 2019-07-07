@@ -2,38 +2,32 @@ package org.jointheleague.memory.model
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.swing.Swing
 import org.jointheleague.cards.Card
 import org.jointheleague.cards.Deck
 import java.awt.Color
 import java.util.*
 
 
+const val GAME_OVER = "GAME_OVER"
+const val NEW_GAME = "NEW_GAME"
+
 class GameModel(private val numCards: Int) : Observable() {
+
     private val deck = Deck(Color.RED)
-    var cards: Array<Card> = selectCards(numCards)
-    var isNewGame: Boolean = false
-        private set
-    val faceUp: BooleanArray = BooleanArray(numCards)
     private var matched = 0
     private val eventQueue = Channel<Int>()
 
-    val gameOver: Boolean
-        get() = matched == numCards
-
-    /**
-     * Logs a message with thread and coroutine info.
-     * Run with VM option -Dkotlinx.coroutines.debug
-     */
-    private fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
+    var cards: Array<Card> = selectCards(numCards)
+    val faceUp: BooleanArray = BooleanArray(numCards)
 
     fun playGame() {
-        GlobalScope.launch {
+        GlobalScope.launch(Dispatchers.Swing) {
             log("playGame launched.")
-            isNewGame = false
             var closeUnmatchedCardsJob: Job? = null
             var first = 0
             var second = 0
-            while (!gameOver) {
+            while (matched != numCards) {
                 val tmp = nextSelected()
                 if (closeUnmatchedCardsJob?.isActive == true) {
                     closeUnmatchedCardsJob.cancel()
@@ -42,13 +36,15 @@ class GameModel(private val numCards: Int) : Observable() {
                 first = if (!faceUp[tmp]) tmp else nextFaceDownSelected()
                 openCard(first)
                 second = nextFaceDownSelected()
+                openCard(second)
                 if (cards[first] == cards[second]) {
                     matched += 2
                 } else {
                     closeUnmatchedCardsJob = launchCloseUnmatchedCards(first, second)
                 }
-                openCard(second)
             }
+            setChanged()
+            notifyObservers(GAME_OVER)
         }
     }
 
@@ -57,6 +53,7 @@ class GameModel(private val numCards: Int) : Observable() {
             log("Launching launchCloseUnmatchedCards...")
             delay(1000)
             closeUnmatchedCards(first, second)
+            log("...done!")
         }
     }
 
@@ -126,8 +123,13 @@ class GameModel(private val numCards: Int) : Observable() {
             faceUp[i] = false
         }
         matched = 0
-        isNewGame = true
         setChanged()
-        notifyObservers()
+        notifyObservers(NEW_GAME)
     }
+
+    /**
+     * Logs a message with thread and coroutine info.
+     * Run with VM option -Dkotlinx.coroutines.debug
+     */
+    private fun log(msg: String) = println("[${Thread.currentThread().name}] $msg")
 }

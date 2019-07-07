@@ -1,7 +1,9 @@
 package org.jointheleague.memory.view
 
 import org.jointheleague.memory.controller.GameController
+import org.jointheleague.memory.model.GAME_OVER
 import org.jointheleague.memory.model.GameModel
+import org.jointheleague.memory.model.NEW_GAME
 import java.awt.GridLayout
 import java.util.*
 import javax.swing.JFrame
@@ -12,7 +14,7 @@ import javax.swing.SwingUtilities
 /*
  * Constants
  */
-private const val NUM_ROWS = 4
+private const val NUM_ROWS = 2
 private const val NUM_COLUMNS = 6
 private const val NUM_CARDS = NUM_ROWS * NUM_COLUMNS
 
@@ -44,29 +46,33 @@ class MemoryGame : JPanel(), Runnable, Observer {
     }
 
 
-    private fun playAnotherGame(): Boolean {
-        val answer = JOptionPane.showConfirmDialog(this, "Do you want to play again?", "Play again?",
-                JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE)
-        return answer == JOptionPane.YES_OPTION
-    }
+    private fun playAnotherGame(): Boolean =
+            JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(
+                    this,
+                    "Do you want to play again?",
+                    "Play again?",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE)
 
     override fun update(observable: Observable, arg: Any?) {
         if (observable !== model) return
-        SwingUtilities.invokeLater {
-            if (model.isNewGame) {
-                for ((i, c) in model.cards.withIndex()) {
-                    buttons[i].card = c
+            when (arg) {
+
+                NEW_GAME -> {
+                    for ((i, c) in model.cards.withIndex()) {
+                        buttons[i].card = c
+                    }
+                    model.playGame()
                 }
-                model.playGame()
-            } else {
-                for ((i, v) in model.faceUp.withIndex()) {
+
+                GAME_OVER -> {
+                    controller.onGameOver(playAnotherGame())
+                }
+
+                else -> for ((i, v) in model.faceUp.withIndex()) {
                     buttons[i].faceUp = v
                 }
             }
-            if (model.gameOver) {
-                controller.onGameOver(playAnotherGame())
-            }
-        }
     }
 }
 

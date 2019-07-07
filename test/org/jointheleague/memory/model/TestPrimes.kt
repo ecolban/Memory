@@ -1,12 +1,14 @@
 package org.jointheleague.memory.model
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.produce
 import kotlinx.coroutines.runBlocking
 import kotlin.math.sqrt
 import java.lang.System.currentTimeMillis as now
 
+@ExperimentalCoroutinesApi
 fun CoroutineScope.primeChannel(): ReceiveChannel<Int> = produce {
     val primesSoFar = mutableListOf(2)
     send(2)
@@ -22,6 +24,7 @@ fun CoroutineScope.primeChannel(): ReceiveChannel<Int> = produce {
     }
 }
 
+@ExperimentalCoroutinesApi
 private fun primesUsingChannel() {
     runBlocking {
         val primes = primeChannel()
@@ -55,6 +58,7 @@ private fun primesUsingList() {
             .joinToString(separator = ", "))
 }
 
+@ExperimentalCoroutinesApi
 fun main() {
     val start1 = now()
     primesUsingList()

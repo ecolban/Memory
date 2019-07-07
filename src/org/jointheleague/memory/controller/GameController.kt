@@ -4,6 +4,7 @@ import org.jointheleague.memory.model.GameModel
 
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
+import kotlin.system.exitProcess
 
 class GameController(private val model: GameModel) : WindowAdapter() {
 
@@ -12,14 +13,14 @@ class GameController(private val model: GameModel) : WindowAdapter() {
     }
 
     override fun windowClosing(e: WindowEvent?) {
-        System.exit(0)
+        exitProcess(status = 0)
     }
 
     fun onGameOver(playAgain: Boolean) {
         if (playAgain) {
             model.reset()
         } else {
-            System.exit(0)
+            exitProcess(status = 0)
         }
     }
 }
