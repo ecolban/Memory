@@ -56,23 +56,23 @@ class MemoryGame : JPanel(), Runnable, Observer {
 
     override fun update(observable: Observable, arg: Any?) {
         if (observable !== model) return
-            when (arg) {
+        when (arg) {
 
-                NEW_GAME -> {
-                    for ((i, c) in model.cards.withIndex()) {
-                        buttons[i].card = c
-                    }
-                    model.playGame()
+            NEW_GAME -> {
+                for ((i, c) in model.cards.withIndex()) {
+                    buttons[i].card = c
                 }
-
-                GAME_OVER -> {
-                    controller.onGameOver(playAnotherGame())
-                }
-
-                else -> for ((i, v) in model.faceUp.withIndex()) {
-                    buttons[i].faceUp = v
-                }
+                model.playGame()
             }
+
+            GAME_OVER -> {
+                controller.onGameOver(playAnotherGame())
+            }
+
+            else -> for ((i, v) in model.faceUp.withIndex()) {
+                buttons[i].faceUp = v
+            }
+        }
     }
 }
 
