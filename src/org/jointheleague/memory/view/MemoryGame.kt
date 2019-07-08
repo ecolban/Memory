@@ -56,7 +56,7 @@ class MemoryGame : JPanel(), Runnable, Observer {
 
     override fun update(observable: Observable, arg: Any?) {
         if (observable !== model) return
-//        SwingUtilities.invokeLater {
+        SwingUtilities.invokeLater {
             when (arg) {
 
                 NEW_GAME -> {
@@ -74,7 +74,7 @@ class MemoryGame : JPanel(), Runnable, Observer {
                     buttons[i].faceUp = v
                 }
             }
-//        }
+        }
     }
 }
 

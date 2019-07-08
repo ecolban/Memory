@@ -2,7 +2,6 @@ package org.jointheleague.memory.model
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.swing.Swing
 import org.jointheleague.cards.Card
 import org.jointheleague.cards.Deck
 import java.awt.Color
@@ -22,7 +21,7 @@ class GameModel(private val numCards: Int) : Observable() {
     val faceUp: BooleanArray = BooleanArray(numCards)
 
     fun playGame() {
-        GlobalScope.launch(Dispatchers.Swing) {
+        GlobalScope.launch(Dispatchers.Default) {
             log("playGame launched.")
             var closeUnmatchedCardsJob: Job? = null
             var first = 0
